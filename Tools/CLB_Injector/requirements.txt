@@ -1,0 +1,5 @@
+clang==11.0
+clock==0.1
+pycryptodome==3.10.1
+pytz==2021.1
+tzlocal==2.1

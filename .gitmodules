@@ -1,0 +1,3 @@
+[submodule "Example/RIOT"]
+	path = Example/RIOT
+	url = https://github.com/RIOT-OS/RIOT.git
