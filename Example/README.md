@@ -35,7 +35,7 @@ $ cd ./RIOT/examples/default
 $ make term
 ```
 
-> To rerun the protection steps, you need to clean the modified files from RIOT folder:
+To rerun the protection steps, you need to clean the modified files from RIOT folder:
 ```
 $ cd <path/to/PATRIOT>/Example/RIOT
 $ git restore .
