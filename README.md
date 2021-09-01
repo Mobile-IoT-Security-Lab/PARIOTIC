@@ -6,8 +6,8 @@ PATRIOTIC support the protection of IoT firmware designed in C/C++ programming l
 
 The tool consists of two modules:
 
-* CLB Injector. This module works directly on the firmware source code and is responsible for parsing the source code, detecting the  QCs,  and building CLBs.
-* CLB   Protector.   This   module   processes   the   compiled IoT  firmware, and  it  is  responsible  for  computing  the signature-verification digests of AT checks and encrypting the CLBs
+* *CLB Injector*. This module works directly on the firmware source code and is responsible for parsing the source code, detecting the  QCs,  and building CLBs.
+* *CLB   Protector*.   This   module   processes   the   compiled IoT  firmware, and  it  is  responsible  for  computing  the signature-verification digests of AT checks and encrypting the CLBs
 
 ## ❱ Publication
 
