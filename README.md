@@ -30,7 +30,7 @@ We submit it for consideration to [IEEE Internet of Things Journal](https://ieee
 
 ## ❱ Repo Structure
 
-* In the `Sources` folder, you can find the source code of the *CLB Injector* and the *CLB Protector* projects.
+* In the `Tools` folder, you can find the source code of the *CLB Injector* and the *CLB Protector* projects.
 * In the `Example` folder, you can find an usage example and the instruction to reproduce it.
 
 ## ❱ Licencing
