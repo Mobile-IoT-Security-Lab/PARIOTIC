@@ -12,21 +12,21 @@ The tool consists of two modules:
 ## ❱ Publication
 
 More details can be found in the paper
-"[TODO](https://arxiv.org/abs/2012.09292)".
+"[PATRIOT: Anti-Repackaging for IoT Firmware](https://arxiv.org/abs/2109.04337)".
 
 We submit it for consideration to [IEEE Internet of Things Journal](https://ieee-iotj.org).
 
-<!--You can cite the paper as follows:
+You can cite the paper as follows:
 ```BibTeX
-@misc{XXX,
-      title={TODO}, 
-      author={Luca Verderame, Antonio Ruggia and Alessio Merlo},
+@misc{verderame2021patriot,
+      title={PATRIOT: Anti-Repackaging for IoT Firmware}, 
+      author={Luca Verderame and Antonio Ruggia and Alessio Merlo},
       year={2021},
-      eprint={XXXXX},
+      eprint={2109.04337},
       archivePrefix={arXiv},
       primaryClass={cs.CR}
 }
-```-->
+```
 
 ## ❱ Repo Structure
 
