@@ -14,17 +14,19 @@ The tool consists of two modules:
 More details can be found in the paper
 "[PATRIOT: Anti-Repackaging for IoT Firmware](https://arxiv.org/abs/2109.04337)".
 
-We submit it for consideration to [IEEE Internet of Things Journal](https://ieee-iotj.org).
+We submit it for consideration to [Computers & Security Journal](https://www.journals.elsevier.com/computers-and-security).
 
 You can cite the paper as follows:
 ```BibTeX
-@misc{verderame2021patriot,
-      title={PATRIOT: Anti-Repackaging for IoT Firmware}, 
-      author={Luca Verderame and Antonio Ruggia and Alessio Merlo},
-      year={2021},
-      eprint={2109.04337},
-      archivePrefix={arXiv},
-      primaryClass={cs.CR}
+@misc{https://doi.org/10.48550/arxiv.2109.04337,
+  doi = {10.48550/ARXIV.2109.04337},
+  url = {https://arxiv.org/abs/2109.04337},
+  author = {Verderame, Luca and Ruggia, Antonio and Merlo, Alessio},
+  keywords = {Cryptography and Security (cs.CR), FOS: Computer and information sciences, FOS: Computer and information sciences},
+  title = {PATRIOT: Anti-Repackaging for IoT Firmware},
+  publisher = {arXiv},
+  year = {2021},
+  copyright = {arXiv.org perpetual, non-exclusive license}
 }
 ```
 
