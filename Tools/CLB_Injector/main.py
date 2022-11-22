@@ -11,8 +11,8 @@ import os
 import random
 import string
 
-NEEDED_LIBRARIES = ['string.h', 'stdio.h', 'stdlib.h', 'stdbool.h', 'sys/mman.h', 'unistd.h', 'sys/types.h']
-
+# NEEDED_LIBRARIES = ['string.h', 'stdio.h', 'stdlib.h', 'stdbool.h', 'sys/mman.h', 'unistd.h', 'sys/types.h']
+NEEDED_LIBRARIES = ['string.h', 'stdio.h', 'stdlib.h', 'stdbool.h', 'unistd.h', 'sys/types.h']
 
 def parse_args():
     """
@@ -72,7 +72,7 @@ def parse_file(file_path, includes, output_encryption_details, output_other_deta
 
         # Create new function body
         try:
-            new_func_name, func_string, parameters_string, return_type = \
+            new_func_name, func_string, parameters_string, return_type, func_ptr_type = \
                 qc.get_new_function_string(needed_variables, lines, output_encryption_details)
         except:
             continue
@@ -107,15 +107,20 @@ def parse_file(file_path, includes, output_encryption_details, output_other_deta
             start_column = qc.condition.extent.start.column + len(new_content) + 1
         end_line = qc.range_cursor.extent.end.line + n_new_line
         n_new_line -= end_line - start_line
-        new_content = "{\n\t//puts(\"REPLACED BODY -> INVOKING NEW FUNCTION " + new_func_name + "\");\n"
+        new_content = "{\n\t// puts(\"REPLACED BODY -> INVOKING NEW FUNCTION " + new_func_name + "\");\n"
         l = len(new_functions[qc.function_signature]) if qc.function_signature in new_functions else 0
         new_content += f"\n\t{qc.get_decrypt_instruction(new_func_name, output_other_details, l)}"
+        func_ptr_type = func_ptr_type.replace("VARIABLE_NAME", f"{new_func_name}_funcptr")
+        new_content += f"\n{func_ptr_type} = {new_func_name}; // {new_func_name}_funcptr = &ofuncdecr; // {new_func_name}; // ofuncdecr;\n"
+        new_content += f"\n//puts(\"Before calling function at code\");\n"
         if return_type == "void":
-            new_content += f"\n\t{new_func_name}({parameters_string});"
+            new_content += f"\n\t({new_func_name}_funcptr)({parameters_string});"
+            new_content += f"\n\t// free(ofuncdecr);"
             new_content += "\n}"
         else:
-            new_content += f"\n\t{return_type} {return_type}_val = {new_func_name}({parameters_string});"
+            new_content += f"\n\t{return_type} {return_type}_val = ({new_func_name}_funcptr)({parameters_string});"
             new_content += f"\n\t if ({return_type}_val.isReturn)\n\t\treturn {return_type}_val.returnValue;"
+            new_content += f"\n\t// free(ofuncdecr);"
             new_content += "\n}"
 
         n_new_line += len(new_content.split('\n')) - 1
@@ -176,7 +181,7 @@ def parse_file(file_path, includes, output_encryption_details, output_other_deta
 
                 new_content += f"\n{get_my_custom_hash_function()}\n"
                 new_content += f"\n{get_decrypt_function()}\n"
-                new_content += f"\n{get_elf_path_function()}\n"
+                # new_content += f"\n{get_elf_path_function()}\n"
                 new_content += f"\n{get_random_portion_elf_hash_function()}\n"
 
                 # Add all signature of new functions

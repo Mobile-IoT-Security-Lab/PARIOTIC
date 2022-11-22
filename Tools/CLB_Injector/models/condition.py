@@ -12,7 +12,7 @@ from utils import check_define_function_from_tokens, handle_last_cursor, extract
 
 from re import match, search
 from Crypto.Random import get_random_bytes
-from Crypto.Util.number import getPrime
+from Crypto.Util.number import getPrime, getRandomRange
 
 
 class QualifiedCondition:
@@ -219,16 +219,23 @@ class QualifiedCondition:
         # Fix input parameters
         calling_params = list()
         input_params = list()
+        param_types = list()
 
         # Inject AT control
         seed = getPrime(32, randfunc=get_random_bytes)
-        at_control = f"\n\toff_t offset = 0x0ff53701;" \
-                     f"\n\tsize_t count = 0xb17e5010;" \
-                     f"\n\tu_int32_t precomputed_hash = 0x4559ffff;" \
-                     f"\n\tu_int32_t current_at_value = get_random_portion_elf_hash(offset, count, {str(seed)});\n\t" \
-                     "\n\tif (current_at_value != precomputed_hash) {\n\t" \
-                     "puts(\"*Aborting: Security Exception (Repackaging detected)\");" \
-                     "\nexit(123);\n}\n\n"
+        at_control = "\n\t// puts(\"Starting decoded function!\");\n"
+        tmps = list()
+        for y in range(2):
+            tmp = (getRandomRange(0, 2 ** 30 - 1), getRandomRange(0, 2 ** 30 - 1), getRandomRange(0, 2 ** 30 - 1))
+            tmps.append(tmp)
+            at_control += f"\n\toff_t offset_" + str(y) + f" = {tmp[0]};" \
+                          f"\n\tsize_t count_" + str(y) + f" = {tmp[1]};" \
+                          f"\n\tu_int32_t precomputed_hash_" + str(y) + f" = {tmp[2]};" \
+                          f"\n\tu_int32_t current_at_value_" + str(y) + " = get_random_portion_elf_hash(offset_" + str(y) + ", count_" + str(y) + f", {str(seed)});\n\t" \
+                          "\n\tif (count_" + str(y) + " > 0 && current_at_value_" + str(y) + " != precomputed_hash_" + str(y) + ") {\n\t" \
+                          "puts(\"*Aborting: Security Exception (Repackaging detected)\");" \
+                          "\nexit(123);\n}\n\n" \
+                          ""
         # calling_params.append(f"(char*)&{self.function_name}")
         # input_params.append("void* at_offset")
         first_index = body_func_str.find('{') + 1
@@ -236,16 +243,22 @@ class QualifiedCondition:
         first_index += len(at_control)
 
         with open(output_file, "a") as fp:
-            fp.write(
-                "{\"source_file\": \"" + self.filename + "\", \"origin_func\": \"" + self.function_name + "\", \"new_func\": \"" + new_func_name + "\", \"seed\": " + str(
-                    seed & ((2 ** 32) - 1)) + ", \"encryption_key\": \"" + (
-                    str(self.__string_constant_value) if self.__string_constant_value != '\\' else '\\\\') + "\"}\n")
+            rd = dict()
+            rd['source_file'] = self.filename
+            rd['origin_func'] = self.function_name
+            rd['new_func'] = new_func_name
+            rd['seed'] = str(seed & ((2 ** 32) - 1))
+            rd['tmps'] = tmps
+            rd['encryption_key'] = (str(self.__string_constant_value) if self.__string_constant_value != '\\' else '\\\\')
+            import json
+            fp.write(json.dumps(rd) + "\n")
 
         for nv in needed_variables:
             result = nv.get_info_as_extracted_function_parameter()
 
             if result:
                 input_params.append(f"{result['new_type']} {result['new_name']}")
+                param_types.append(f"{result['new_type']}")
                 calling_params.append(f"{result['calling_parameter']}")
 
                 if result["substitute"]:
@@ -301,8 +314,12 @@ class QualifiedCondition:
                             f"return {struct_name}_ret_val_default;\n" + \
                             body_func_str[last_index:]
 
-        func_string = f"{def_struct}\n{return_type} {new_func_name} ({parameters}) {body_func_str}\n"
-        return new_func_name, func_string, ', '.join(calling_params), return_type
+        func_string = f"{def_struct}\n__attribute__( ( long_call, section(\".data.{new_func_name.replace('_', '')}\") ) ) {return_type} {new_func_name} ({parameters}) {body_func_str}\n"
+        if len(param_types) > 0:
+            func_type = f"{return_type} (*VARIABLE_NAME) ({', '.join(param_types)})"
+        else:
+            func_type = f"{return_type} (*VARIABLE_NAME) (void)"
+        return new_func_name, func_string, ', '.join(calling_params), return_type, func_type
 
     def compute_my_hash_instructions(self, function_with_init_injected_variables, bool_var_name="my_new_check_bool"):
         # pre-compute the hash value
@@ -358,10 +375,12 @@ class QualifiedCondition:
         return new_content, function_with_init_injected_variables
 
     def get_decrypt_instruction(self, function_to_decrypt, output_file, inserted=0):
-        hex_placeholder = hex(0xefcdab89 + inserted)[2:]
+        hex_placeholder = hex(getRandomRange(0, 2**32) + inserted)[2:]
         new_content = f"size_t s_{hex_placeholder} = 0x{hex_placeholder};\n"
+        new_content += f"//if ({function_to_decrypt}_decrypted == false) " + "{\n "
+        new_content += f"\n\t//{function_to_decrypt}_decrypted = true;\n"
         if self.__condition_type == ConstantType.STRING:
-            new_content += f"decrypt_code_custom_function(\"{function_to_decrypt}\", (void*)&{function_to_decrypt}, s_{hex_placeholder}, {''.join([t.spelling for t in self.other_variable.get_tokens()])}, {self.__length_constant_value});"
+            new_content += f"/*void *ofuncdecr = (void *)*/ decrypt_code_custom_function(\"{function_to_decrypt}\", ((void*){function_to_decrypt}), s_{hex_placeholder}, {''.join([t.spelling for t in self.other_variable.get_tokens()])}, {self.__length_constant_value});"
         else:
 
             origin_token = ''.join([t.spelling for t in self.other_variable.get_tokens()])
@@ -370,8 +389,9 @@ class QualifiedCondition:
             new_content += f"\nint len__{var_name} = snprintf(NULL, 0, \"%d\", {var_name});"
             new_content += f"\nchar* str__{var_name} = malloc(len__{var_name} + 1);"
             new_content += f"\nsnprintf(str__{var_name}, len__{var_name}+1, \"%d\", {var_name});"
-            new_content += f"\ndecrypt_code_custom_function(\"{function_to_decrypt}\", (void*)&{function_to_decrypt}, s_{hex_placeholder}, str__{var_name}, {self.__length_constant_value});"
+            new_content += f"\n/*void *ofuncdecr = (void *)*/decrypt_code_custom_function(\"{function_to_decrypt}\", ((void*){function_to_decrypt}), s_{hex_placeholder}, str__{var_name}, {self.__length_constant_value});"
             new_content += f"\nfree(str__{var_name});"
+        new_content += "\n//}"
 
         with open(output_file, "a") as fp:
             fp.write(

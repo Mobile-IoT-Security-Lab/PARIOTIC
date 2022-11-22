@@ -57,22 +57,56 @@ public class Main {
         String integrityInfosFile = (String) args.get("integrityInfosFile");
         String hexPlaceholdersFile = (String) args.get("hexPlaceholdersFile");
 
-        // Get symbol's information from nm linux command
-        ProcessBuilder pb = new ProcessBuilder("nm", "-S", "-l", "--numeric-sort", "--defined-only", elf);
+        // Get array of offset-size
+        ProtectionOffset textSection = null;
+        ProtectionOffset relocateSection = null;
+        List<ProtectionOffset> protectionOffsets = new ArrayList<>();
+
+        ProcessBuilder pb = new ProcessBuilder("readelf", "-S", elf);
         Process p = pb.start();
         BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()));
-        List<Symbol> symbols = new LinkedList<>();
-        String encSymbolLine = null;
-        while ((encSymbolLine = reader.readLine()) != null) {
-            Symbol sym = null;
+        String line = null;
+        while ((line = reader.readLine()) != null) {
             try {
-                sym = new Symbol(encSymbolLine);
+                if (line.contains("] .text ")) {
+                    textSection = new ProtectionOffset(line);
+                } else if (line.contains("] .relocate ")) { // or .stack or .bss
+                    relocateSection = new ProtectionOffset(line);
+                    // protectionOffsets.add(new ProtectionOffset(line));
+                } /*else if (line.contains("] .stack ")) {
+                    protectionOffsets.add(new ProtectionOffset(line));
+                }*/
             } catch (CustomException e) {
-                System.err.println("Ignoring non source symbols");
-                continue;
+                System.err.println("Error parsing ELF sections. Message: " + e.getMessage());
             }
+        }
+        assert textSection != null;
+        assert relocateSection != null;
 
-            symbols.add(sym);
+        // Get symbol's information from nm linux command
+        pb = new ProcessBuilder("nm", "-S", "-l", "--numeric-sort", "--defined-only", elf);
+        p = pb.start();
+        reader = new BufferedReader(new InputStreamReader(p.getInputStream()));
+        List<Symbol> symbols = new LinkedList<>();
+        line = null;
+        while ((line = reader.readLine()) != null) {
+            Symbol sym = null;
+            if (symbols.size() > 0 && line.trim().split("\\s+")[1].equals("t") && symbols.get(symbols.size()-1).firstDataOffset == null) {
+                if (Integer.parseInt(line.trim().split("\\s+")[0], 16) < relocateSection.addr) {
+                    symbols.get(symbols.size()-1).firstDataOffset = Integer.parseInt(line.trim().split("\\s+")[0], 16) - textSection.addr + textSection.offset;
+                } else {
+                    symbols.get(symbols.size()-1).firstDataOffset = Integer.parseInt(line.trim().split("\\s+")[0], 16) - relocateSection.addr + relocateSection.offset;
+                }
+            } else {
+                try {
+                    sym = new Symbol(line, textSection.addr, textSection.offset, relocateSection.addr, relocateSection.offset);
+                } catch (CustomException e) {
+                    System.err.println("Ignoring non source symbols");
+                    continue;
+                }
+
+                symbols.add(sym);
+            }
         }
 
         // Access to file with read and write permissions
@@ -89,6 +123,7 @@ public class Main {
         List<Symbol> newSymbols = new ArrayList<>();
 
         // Substitute all values in original function -> We use them for the integrity check
+        //  -- fix the length of the method to decode
         List<HexPlaceholder> hexPlaceholders = Helper.readFile(hexPlaceholdersFile, HexPlaceholder.class);
         for (HexPlaceholder hexPlaceholder : hexPlaceholders) {
             Symbol originSymbol = null;
@@ -112,12 +147,16 @@ public class Main {
 
             byte[] originFunctionBytes = new byte[originSymbol.length];
             randomAccessFile.seek(originSymbol.offset);
-            randomAccessFile.read(originFunctionBytes);
+            randomAccessFile.read(originFunctionBytes, 0, originSymbol.length);
 
             String unsignedOriginalBytesString = Helper.getUnsignedBytesString(originFunctionBytes);
             int lengthOffset = (unsignedOriginalBytesString.indexOf(hexPlaceholder.getHex_to_replace()) / 2);
+            if (lengthOffset == 0) {
+                continue;
+            }
 
-            byte[] lengthBytes = new BigInteger(String.valueOf(newSymbol.length), 10).toByteArray();
+            // newSymbol.length
+            byte[] lengthBytes = new BigInteger(String.valueOf(newSymbol.getSize()-4), 10).toByteArray();
             Helper.reverse(lengthBytes);
 
             randomAccessFile.seek(originSymbol.offset+lengthOffset);
@@ -127,6 +166,20 @@ public class Main {
             }
         }
 
+        /*for (int i = 0; i < newSymbols.size(); i++) {
+            int start = 0;
+            if (i != 0) {
+                start = newSymbols.get(i-1).offset + newSymbols.get(i-1).length;
+            }
+            int end = newSymbols.get(i).offset;
+            assert start < end;
+            protectionOffsets.add(new ProtectionOffset( start, textSection.addr + start, end - start));
+        }*/
+        protectionOffsets.add(textSection);
+        // TODO: add protection for strings
+
+
+        // Add integrity check and perform encryption
         List<IntegrityInfo> integrityInfos = Helper.readFile(integrityInfosFile, IntegrityInfo.class);
         for(IntegrityInfo integrityInfo : integrityInfos) {
             Symbol originSymbol = null;
@@ -139,66 +192,89 @@ public class Main {
                 continue;
             }
 
+            /*if (!originSymbol.name.contains("search_commands")) {
+                continue;
+            }*/
+
             // read new function bytes
             byte[] newFunctionBytes = new byte[newSymbol.length];
             randomAccessFile.seek(newSymbol.offset);
             randomAccessFile.read(newFunctionBytes);
-            String unsignedNewFunctionBytesString = Helper.getUnsignedBytesString(newFunctionBytes);
+            // String unsignedNewFunctionBytesString = Helper.getUnsignedBytesString(newFunctionBytes);
 
-            // TODO: check and handle if there is more than one match
-            int offsetOffset = (unsignedNewFunctionBytesString.indexOf("0137f50f") / 2);
-            int countOffset = (unsignedNewFunctionBytesString.indexOf("10507eb1") / 2);
-            int precomputedHashOffset = (unsignedNewFunctionBytesString.indexOf("ffff5945") / 2);
-            assert precomputedHashOffset == countOffset + 4 + 3;
+            for (int k = 0; k < 2; k++) {
+                String unsignedNewFunctionBytesString = Helper.getUnsignedBytesString(newFunctionBytes);
+                // System.out.println("unsigned string : " + unsignedNewFunctionBytesString);
+                ProtectionOffset protectionOffset = protectionOffsets.get(new Random().nextInt(protectionOffsets.size()));
 
-            // read byte of the original function (for the AT control)
-            newSymbol.computeIntegrityCheckRange(newSymbols, elfBytes.length);
+                byte tmp[] = new BigInteger(String.valueOf(integrityInfo.getTmp(k)[0])).toByteArray();
+                Helper.reverse(tmp);
+                String tmpstr = Helper.getUnsignedBytesString(tmp);
+                int offsetOffset = (unsignedNewFunctionBytesString.indexOf(tmpstr) / 2);
 
-            byte[] integrityBytes = new byte[newSymbol.countOfIntegrityBytes];
-            randomAccessFile.seek(newSymbol.startOffsetIntegrityCheck);
-            randomAccessFile.read(integrityBytes);
-            long precomputedHash = integrityInfo.hashString(integrityBytes.clone());
-            // System.out.println("Precomputed hash = " + precomputedHash + " with seed " + integrityInfo.getSeed() + " for " + integrityBytes.length + " bytes");
+                tmp = new BigInteger(String.valueOf(integrityInfo.getTmp(k)[1])).toByteArray();
+                Helper.reverse(tmp);
+                tmpstr = Helper.getUnsignedBytesString(tmp);
+                int countOffset = (unsignedNewFunctionBytesString.indexOf(tmpstr) / 2);
 
-            String precomputedHashHexString = Long.toHexString(precomputedHash);
-            assert precomputedHashHexString.length() == 8;
+                tmp = new BigInteger(String.valueOf(integrityInfo.getTmp(k)[2])).toByteArray();
+                Helper.reverse(tmp);
+                tmpstr = Helper.getUnsignedBytesString(tmp);
+                int precomputedHashOffset = (unsignedNewFunctionBytesString.indexOf(tmpstr) / 2);
+                assert countOffset == (offsetOffset-4) && offsetOffset == (precomputedHashOffset-4); // precomputedHashOffset == countOffset + 4 + 3;
 
-            byte[] precomputedBytes =  new BigInteger(precomputedHashHexString, 16).toByteArray();
-            Helper.reverse(precomputedBytes);
-            byte[] countBytes = new BigInteger(String.valueOf(newSymbol.countOfIntegrityBytes), 10).toByteArray();
-            Helper.reverse(countBytes);
-            byte[] offsetBytes = new BigInteger(String.valueOf(newSymbol.startOffsetIntegrityCheck), 10).toByteArray();
-            Helper.reverse(offsetBytes);
+                // read byte of the original function (for the AT control)
+                // newSymbol.computeIntegrityCheckRange(newSymbols, elfBytes.length);
 
-            // Replace the placeholder with the correct value
-            for (int i = 0; i < 4; i++){
-                try {
-                    newFunctionBytes[i + offsetOffset] = offsetBytes[i];
-                } catch (ArrayIndexOutOfBoundsException e) {
-                    newFunctionBytes[i + offsetOffset] = (byte) 0;
-                }
+                byte[] integrityBytes = new byte[protectionOffset.size];
+                randomAccessFile.seek(protectionOffset.offset);
+                randomAccessFile.read(integrityBytes);
+                long precomputedHash = integrityInfo.hashString(integrityBytes.clone());
+                // System.out.println("Precomputed hash = " + precomputedHash + " with seed " + integrityInfo.getSeed() + " for " + integrityBytes.length + " bytes");
 
-                try {
-                    newFunctionBytes[i + countOffset] = countBytes[i];
-                } catch (ArrayIndexOutOfBoundsException e) {
-                    newFunctionBytes[i + countOffset] = (byte) 0;
-                }
+                String precomputedHashHexString = Long.toHexString(precomputedHash);
+                assert precomputedHashHexString.length() == 8;
 
-                try {
-                    newFunctionBytes[i + precomputedHashOffset] = precomputedBytes[i];
-                } catch (ArrayIndexOutOfBoundsException e) {
-                    newFunctionBytes[i + precomputedHashOffset] = (byte) 0;
+                // System.out.println(newSymbol.name + " --> precomputed string : " + precomputedHashHexString + " (from " + protectionOffset.addr + " - size " + protectionOffset.size + " - seed " + integrityInfo.getSeed() + ")");
+                byte[] precomputedBytes = new BigInteger(precomputedHashHexString, 16).toByteArray();
+                Helper.reverse(precomputedBytes);
+                byte[] countBytes = new BigInteger(String.valueOf(protectionOffset.size), 10).toByteArray();
+                Helper.reverse(countBytes);
+                byte[] offsetBytes = new BigInteger(String.valueOf(protectionOffset.addr), 10).toByteArray();
+                Helper.reverse(offsetBytes);
+
+                // Replace the placeholder with the correct value
+                for (int i = 0; i < 4; i++) {
+                    try {
+                        newFunctionBytes[i + offsetOffset] = offsetBytes[i];
+                    } catch (ArrayIndexOutOfBoundsException e) {
+                        newFunctionBytes[i + offsetOffset] = (byte) 0;
+                    }
+
+                    try {
+                        newFunctionBytes[i + countOffset] = countBytes[i];
+                    } catch (ArrayIndexOutOfBoundsException e) {
+                        newFunctionBytes[i + countOffset] = (byte) 0;
+                    }
+
+                    try {
+                        newFunctionBytes[i + precomputedHashOffset] = precomputedBytes[i];
+                    } catch (ArrayIndexOutOfBoundsException e) {
+                        newFunctionBytes[i + precomputedHashOffset] = (byte) 0;
+                    }
                 }
             }
 
             // Encrypt the newFunctionBytes and rewrite to file
-            byte[] encryptedBytes = integrityInfo.encryptBodyBytes(newFunctionBytes);
+            byte[] encryptedBytes = integrityInfo.encryptBodyBytes(newFunctionBytes, newSymbol.getSize());
             randomAccessFile.seek(newSymbol.offset);
             randomAccessFile.write(encryptedBytes);
 
             // Remove current newSymbol from newSymbols list
             newSymbols.remove(newSymbol);
         }
+
+        randomAccessFile.close();
 
         // Print general information
         StringBuilder stringBuilder = new StringBuilder(String.format("\n\n### Result Report ### \n"));
@@ -212,6 +288,25 @@ public class Main {
                 .filter(symbol -> name.equals(symbol.name) && sourceFile.equals(symbol.sourceFile))
                 .findFirst()
                 .orElseThrow(() -> new NoSuchElementException("Symbol " + name + " not found"));
+    }
+
+    private static class ProtectionOffset {
+        final int offset;
+        final int addr;
+        final int size;
+
+        public ProtectionOffset(String line) {
+            String split[] = line.trim().split("\\s+");
+            this.addr = Integer.parseInt(split[4], 16);
+            this.offset = Integer.parseInt(split[5], 16);
+            this.size = Integer.parseInt(split[6], 16);
+        }
+
+        public ProtectionOffset(int offset, int addr, int size) {
+            this.offset = offset;
+            this.addr = addr;
+            this.size = size;
+        }
     }
 
 }

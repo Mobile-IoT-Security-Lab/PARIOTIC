@@ -283,6 +283,10 @@ static u_int32_t my_hash(char* buf, size_t len, u_int32_t seed){
     // size_t len = strlen(buf);
     u_int32_t hash = seed; // 786431; /* prime */
 
+    if (buf == NULL) {
+        return hash;
+    }
+
     for (size_t i = 0; i < len; i++) {
         hash += (int) buf[i];
         hash += hash << 10;
@@ -313,28 +317,14 @@ def get_origin_function_hash_function():
 
 
 def get_random_portion_elf_hash_function():
-    return """static u_int32_t get_random_portion_elf_hash(off_t offset, size_t count, u_int32_t seed) {
+    return """static __attribute__ ((noinline)) u_int32_t get_random_portion_elf_hash(unsigned char *offset, size_t count, u_int32_t seed) {
     
-    char *buffer = NULL;
-   int read_size;
-   char filename[1024];
-   FILE *handler = fopen(getElfPath(filename, 1024), "r");
-
-   if (handler)
-   {
-       buffer = (char*) malloc(sizeof(char) * count );
-       fseek(handler, offset, SEEK_SET);
-       read_size = fread(buffer, sizeof(char), count, handler);
-
-       if (count != read_size) {
-           free(buffer);
-           buffer = NULL;
-       }
-       fclose(handler);
+   char *buffer = NULL;
+   if (count <= 0) {
+        return 0;
     }
-    u_int32_t result = my_hash(buffer, count, seed);
-    free(buffer);
 
+    u_int32_t result = my_hash(offset, count, seed);
     return result;
 }
     """
@@ -394,65 +384,39 @@ def get_elf_path_function():
 
 
 def get_decrypt_function():
-    return """static char** decryptedFunctionNames = NULL;
-static int decryptedCurrentSize = 10;
-
-static int decrypt_code_custom_function(char* functionName, void *offset, size_t count, char* key, int lenKey) {
-    int page_size = getpagesize();
-
-    if (decryptedFunctionNames == NULL) {
-        decryptedFunctionNames = calloc(decryptedCurrentSize, sizeof(char*));
-    }
-
-    bool found = false;
-    int numberOfFunction = 0;
-    while(decryptedFunctionNames[numberOfFunction]) {
-        if(strcmp(decryptedFunctionNames[numberOfFunction], functionName) == 0) {
-            found = true;
-            break;
-        }
-        numberOfFunction++;
-    }
-    if (found) {
-        return 1;
-    }
-
-    char *page_start = ((char *)offset) - (((unsigned long)offset) % page_size);
-    size_t page_count = 1; // Pages to mprotect
-    while(((char *)offset) + count > (page_start + page_size * page_count)) {
-        page_count++;
-    }
-
-    // Mark all pages where code lies in as W&X
-    if(mprotect(page_start, page_count * page_size, PROT_READ | PROT_WRITE | PROT_EXEC) != 0) {
-        puts("Err mprotect");
-        return -1;
-    }
-
-    // TODO: update encryption method
-
-    // Decrypt and write decrypted code back to .text segment
-    unsigned char* result = malloc(count * sizeof(unsigned char));
-
-    for (unsigned int i = 0; i < count; i++) {
-        result[i] = (unsigned char) (((char*)offset)[i] ^ key[i%lenKey]);
-    }
-
-    // TODO: handle multi page
-    // write back to .text section in memory
-    memcpy(offset, result, count);
+    return """
+#define MAX_FUNCS 20
+static u_int16_t idecrypted = 0;
+static u_int32_t decrypted[MAX_FUNCS] = {0};
+static __attribute__ ((inline)) void decrypt_code_custom_function(char* functionName, void *offset, size_t count, char* key, int lenKey) {
+    // puts("Decrypt code");
+    offset = offset + 4;
     
-    // update functionNames
-    if (numberOfFunction < decryptedCurrentSize) {
-        decryptedFunctionNames[numberOfFunction] = functionName;
-        numberOfFunction++;
-    } else {
-        // TODO: allocate more space
+    // TODO: Check if function is already decrypted
+    for (int i = 0; i < idecrypted; i++) {
+        if (decrypted[i] == (u_int32_t) offset) {
+            return;
+        }
     }
+    decrypted[idecrypted] = (u_int32_t) offset;
+    idecrypted++;
+    
+    /*if (mpu_enabled()) {
+        puts("MPU is enabled");
+    } else {
+        puts("MPU is not enabled");
+    }*/
 
+    // puts("Before writing to the memory!");
+    for (unsigned int i = 0; i < count; i++) {
+        ((char*)offset)[i] = (((char*)offset)[i] ^ key[i%lenKey]);
+    }
+    // puts("After writing to the memory!");
+    
     // Clean instruction cache
-    __builtin___clear_cache(page_start, page_start + (page_count * page_size));
-    return 0;
+    // __builtin___clear_cache(page_start, page_start + (page_count * page_size));
+    // return 0;
+    // return (void *) result;
 }
     """
 

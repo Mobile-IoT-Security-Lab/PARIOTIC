@@ -101,7 +101,6 @@ RIOT/sys/net/application_layer/cord/epsim/cord_epsim.c
 RIOT/sys/net/application_layer/cord/lc/cord_lc.c
 RIOT/sys/net/application_layer/emcute/emcute.c
 RIOT/sys/net/application_layer/emcute/emcute_str.c
-RIOT/sys/net/application_layer/gcoap/gcoap.c
 RIOT/sys/net/application_layer/nanocoap/nanocoap.c
 RIOT/sys/net/application_layer/nanocoap/sock.c
 RIOT/sys/net/credman/credman.c
@@ -135,7 +134,6 @@ RIOT/sys/net/gnrc/network_layer/ipv6/nib/_nib-router.c
 RIOT/sys/net/gnrc/network_layer/ipv6/nib/_nib-slaac.c
 RIOT/sys/net/gnrc/network_layer/ndp/gnrc_ndp.c
 RIOT/sys/net/gnrc/pktbuf/gnrc_pktbuf.c
-RIOT/sys/net/gnrc/pktbuf_static/gnrc_pktbuf_static.c
 RIOT/sys/net/gnrc/pktdump/gnrc_pktdump.c
 RIOT/sys/net/gnrc/pkt/gnrc_pkt.c
 RIOT/sys/net/gnrc/routing/rpl/gnrc_rpl_auto_init.c
