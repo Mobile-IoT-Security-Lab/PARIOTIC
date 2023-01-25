@@ -1,8 +1,8 @@
-## ❱ PATRIOTIC
+## ❱ PARIOTIC
 
-**PATRIOTIC** (<u>P</u>ervasive <u>A</u>nti-<u>T</u>ampering and anti-<u>R</u>epackaging for <u>IoT</u> for <u>I</u>ntegrated <u>C</u>-based Firmware) is the first solution aimed at making IoT firmware self-resistant against repackaging through the whole production and delivery process. 
+**PARIOTIC** (<u>P</u>ervasive <u>A</u>nti-<u>R</u>epackaging for <u>IoT</u> for <u>I</u>ntegrated <u>C</u>-based Firmware) is the first solution aimed at making IoT firmware self-resistant against repackaging through the whole production and delivery process. 
 
-PATRIOTIC support the protection of IoT firmware designed in C/C++ programming language. The methodology exploits the use of cryptographically obfuscated logic bombs  (CLB) to hide anti-tampering (AT) checks directly in the firmware code. 
+PARIOTIC support the protection of IoT firmware designed in C/C++ programming language. The methodology exploits the use of cryptographically obfuscated logic bombs  (CLB) to hide anti-tampering (AT) checks directly in the firmware code. 
 
 The tool consists of two modules:
 
@@ -12,9 +12,9 @@ The tool consists of two modules:
 ## ❱ Publication
 
 More details can be found in the paper
-"[PATRIOT: Anti-Repackaging for IoT Firmware](https://arxiv.org/abs/2109.04337)".
+"[PARIOTIC: Anti-Repackaging for IoT Firmware Integrity](https://arxiv.org/abs/2109.04337)".
 
-We submit it for consideration to [Computers & Security Journal](https://www.journals.elsevier.com/computers-and-security).
+We submit it for consideration to [Journal of Network and Computer Applications](https://www.sciencedirect.com/journal/journal-of-network-and-computer-applications).
 
 You can cite the paper as follows:
 ```BibTeX
@@ -23,7 +23,7 @@ You can cite the paper as follows:
   url = {https://arxiv.org/abs/2109.04337},
   author = {Verderame, Luca and Ruggia, Antonio and Merlo, Alessio},
   keywords = {Cryptography and Security (cs.CR), FOS: Computer and information sciences, FOS: Computer and information sciences},
-  title = {PATRIOT: Anti-Repackaging for IoT Firmware},
+  title = {Anti-Repackaging for IoT Firmware Integrity},
   publisher = {arXiv},
   year = {2021},
   copyright = {arXiv.org perpetual, non-exclusive license}
@@ -51,4 +51,4 @@ This software was developed for research purposes at the Computer Security Lab
 ## ❱ Team
 * [Alessio Merlo](https://csec.it/people/alessio_merlo/) - Faculty Member
 * [Antonio Ruggia](https://github.com/totoR13) - PhD. Student
-* [Luca Verderame](https://csec.it/people/luca_verderame/) - Postdoctoral Researcher
+* [Luca Verderame](https://csec.it/people/luca_verderame/) - Assistant Professor
