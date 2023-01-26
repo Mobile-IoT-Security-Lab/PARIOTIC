@@ -2,7 +2,7 @@
 
 **PARIOTIC** (<u>P</u>ervasive <u>A</u>nti-<u>R</u>epackaging for <u>IoT</u> for <u>I</u>ntegrated <u>C</u>-based Firmware) is the first solution aimed at making IoT firmware self-resistant against repackaging through the whole production and delivery process. 
 
-PATRIOTIC support the protection of IoT firmware designed in C/C++ programming language. The methodology exploits the use of cryptographically obfuscated logic bombs  (CLB) to hide anti-tampering (AT) checks directly in the firmware code. 
+PARIOTIC support the protection of IoT firmware designed in C/C++ programming language. The methodology exploits the use of cryptographically obfuscated logic bombs  (CLB) to hide anti-tampering (AT) checks directly in the firmware code. 
 
 The tool consists of two modules:
 
