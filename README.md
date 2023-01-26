@@ -1,6 +1,6 @@
-## ❱ PATRIOTIC
+## ❱ PARIOTIC
 
-**PATRIOTIC** (<u>P</u>ervasive <u>A</u>nti-<u>T</u>ampering and anti-<u>R</u>epackaging for <u>IoT</u> for <u>I</u>ntegrated <u>C</u>-based Firmware) is the first solution aimed at making IoT firmware self-resistant against repackaging through the whole production and delivery process. 
+**PARIOTIC** (<u>P</u>ervasive <u>A</u>nti-<u>R</u>epackaging for <u>IoT</u> for <u>I</u>ntegrated <u>C</u>-based Firmware) is the first solution aimed at making IoT firmware self-resistant against repackaging through the whole production and delivery process. 
 
 PATRIOTIC support the protection of IoT firmware designed in C/C++ programming language. The methodology exploits the use of cryptographically obfuscated logic bombs  (CLB) to hide anti-tampering (AT) checks directly in the firmware code. 
 
@@ -12,7 +12,7 @@ The tool consists of two modules:
 ## ❱ Publication
 
 More details can be found in the paper
-"[PATRIOT: Anti-Repackaging for IoT Firmware](https://arxiv.org/abs/2109.04337)".
+"[PARIOT: Anti-Repackaging for IoT Firmware](https://arxiv.org/abs/2109.04337)".
 
 We submit it for consideration to [Computers & Security Journal](https://www.journals.elsevier.com/computers-and-security).
 
@@ -23,17 +23,12 @@ You can cite the paper as follows:
   url = {https://arxiv.org/abs/2109.04337},
   author = {Verderame, Luca and Ruggia, Antonio and Merlo, Alessio},
   keywords = {Cryptography and Security (cs.CR), FOS: Computer and information sciences, FOS: Computer and information sciences},
-  title = {PATRIOT: Anti-Repackaging for IoT Firmware},
+  title = {Anti-Repackaging for IoT Firmware Integrity},
   publisher = {arXiv},
   year = {2021},
   copyright = {arXiv.org perpetual, non-exclusive license}
 }
 ```
-
-## ❱ Repo Structure
-
-* In the `Tools` folder, you can find the source code of the *CLB Injector* and the *CLB Protector* projects.
-* In the `Example` folder, you can find an usage example and the instruction to reproduce it.
 
 ## ❱ Licencing
 This tool is available under a dual license: a commercial one required for closed source projects or commercial projects, and an AGPL license for open-source projects.
